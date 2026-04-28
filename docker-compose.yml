@@ -1,13 +1,41 @@
 services:
-  postgres:
+  postgres-auth:
     image: postgres:15-alpine
-    container_name: fastcart-db
-    env_file:
-      - .env
+    container_name: fastcart-db-auth
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: fastcart_auth
     ports:
       - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_auth_data:/var/lib/postgresql/data
+
+  postgres-product:
+    image: postgres:15-alpine
+    container_name: fastcart-db-product
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: fastcart_product
+    ports:
+      - "5434:5432" 
+    volumes:
+      - postgres_product_data:/var/lib/postgresql/data
+
+  postgres-order:
+    image: postgres:15-alpine
+    container_name: fastcart-db-order
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: fastcart_order
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_order_data:/var/lib/postgresql/data
 
 volumes:
-  postgres_data:
+  postgres_auth_data:
+  postgres_product_data:
+  postgres_order_data:
