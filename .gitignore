@@ -1,7 +1,10 @@
 # Python
 __pycache__/
-venv/
+.venv/
 *.pyc
 
 # Secrets
 .env
+
+
+run-on-laptop.sh

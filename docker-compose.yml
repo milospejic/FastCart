@@ -1,4 +1,5 @@
 services:
+
   postgres-auth:
     image: postgres:15-alpine
     container_name: fastcart-db-auth
@@ -34,6 +35,53 @@ services:
       - "5435:5432"
     volumes:
       - postgres_order_data:/var/lib/postgresql/data
+
+  auth-service:
+    build:
+      context: ./services/auth
+      dockerfile: Dockerfile
+    container_name: fastcart-auth
+    ports:
+      - "8001:8001"
+    env_file: .env
+    depends_on:
+      - postgres-auth
+
+  product-service:
+    build:
+      context: ./services/product
+      dockerfile: Dockerfile
+    container_name: fastcart-product
+    ports:
+      - "8002:8002"
+    env_file: .env
+    depends_on:
+      - postgres-product
+
+  order-service:
+    build:
+      context: ./services/order
+      dockerfile: Dockerfile
+    container_name: fastcart-order
+    ports:
+      - "8003:8003"
+    env_file: .env
+    depends_on:
+      - postgres-order
+      - product-service
+
+  gateway-service:
+    build:
+      context: ./services/gateway
+      dockerfile: Dockerfile
+    container_name: fastcart-gateway
+    ports:
+      - "8000:8000"
+    env_file: .env
+    depends_on:
+      - auth-service
+      - product-service
+      - order-service
 
 volumes:
   postgres_auth_data:

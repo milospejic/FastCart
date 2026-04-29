@@ -1,7 +1,7 @@
 import uuid
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import String, Float, Integer
-from .database import Base
+from database import Base
 
 class Order(Base):
     __tablename__ = "orders"

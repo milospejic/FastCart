@@ -10,10 +10,10 @@ from jwt.exceptions import InvalidTokenError
 
 from fastapi.middleware.cors import CORSMiddleware
 
-from .schemas import UserCreate, TokenResponse, UserResponse
-from .models import User
-from .database import get_db, engine, Base
-from .config import settings
+from schemas import UserCreate, TokenResponse, UserResponse
+from models import User
+from database import get_db, engine, Base
+from config import settings
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -73,7 +73,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/health")
+@app.get("/auth/health")
 async def health_check():
     return {"status": "Auth Service is healthy"}
 

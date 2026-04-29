@@ -5,13 +5,12 @@ from sqlalchemy.future import select
 from contextlib import asynccontextmanager
 from typing import List
 
-from .schemas import ProductCreate, ProductResponse, ProductUpdateStock
-from .models import Product
-from .database import get_db, engine, Base
+from schemas import ProductCreate, ProductResponse, ProductUpdateStock
+from models import Product
+from database import get_db, engine, Base
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Automatically create the products table when the server starts
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
@@ -22,7 +21,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-@app.get("/health")
+@app.get("/products/health")
 async def health_check():
     return {"status": "Product Service is healthy"}
 

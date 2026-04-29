@@ -7,10 +7,10 @@ import jwt
 import httpx
 from jwt.exceptions import InvalidTokenError
 
-from .schemas import OrderCreate, OrderResponse
-from .models import Order
-from .database import get_db, engine, Base
-from .config import settings
+from schemas import OrderCreate, OrderResponse
+from models import Order
+from database import get_db, engine, Base
+from config import settings
 
 security = HTTPBearer()
 
@@ -32,14 +32,20 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="FastCart Order API", description="Manages customer orders", lifespan=lifespan)
 
+
+@app.get("/orders/health")
+async def health_check():
+    return {"status": "Order Service is healthy"}
+
+    
 @app.post("/orders", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
 async def create_order(
     order: OrderCreate, 
     user_id: str = Depends(get_current_user_id), 
     db: AsyncSession = Depends(get_db)
 ):
-    product_url = f"http://127.0.0.1:8002/products/{order.product_id}"
-    deduct_url = f"http://127.0.0.1:8002/products/{order.product_id}/deduct"
+    product_url = f"http://fastcart-product:8002/products/{order.product_id}"
+    deduct_url = f"http://fastcart-product:8002/products/{order.product_id}/deduct"
     
     async with httpx.AsyncClient() as client:
         response = await client.get(product_url)
