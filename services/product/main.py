@@ -14,6 +14,22 @@ from database import get_db, engine, Base, AsyncSessionLocal
 from config import settings
 from shared.events import OrderCreatedEvent, StockReservedEvent, StockFailedEvent
 
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import jwt
+from jwt.exceptions import InvalidTokenError
+
+security = HTTPBearer()
+
+async def require_admin(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    try:
+        payload = jwt.decode(credentials.credentials, settings.secret_key, algorithms=[settings.algorithm])
+        role: str = payload.get("role")
+        if role != "admin":
+            raise HTTPException(status_code=403, detail="Admin privileges required")
+        return payload.get("sub")
+    except InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
 async def process_order_created(message: aio_pika.abc.AbstractIncomingMessage):
     async with message.process():
         event_data = json.loads(message.body.decode())
@@ -94,7 +110,11 @@ async def health_check():
     return {"status": "Product Service is healthy"}
 
 @app.post("/products", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
-async def create_product(product: ProductCreate, db: AsyncSession = Depends(get_db)):
+async def create_product(
+    product: ProductCreate, 
+    admin_id: str = Depends(require_admin), 
+    db: AsyncSession = Depends(get_db)
+):
     new_product = Product(
         name=product.name,
         description=product.description,

@@ -21,13 +21,14 @@ from shared.events import OrderCreatedEvent, EventOrderItem, StockFailedEvent
 
 security = HTTPBearer()
 
-async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def get_current_user_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
         payload = jwt.decode(credentials.credentials, settings.secret_key, algorithms=[settings.algorithm])
         user_id: str = payload.get("sub")
+        role: str = payload.get("role")
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid token payload")
-        return user_id
+        return {"user_id": user_id, "role": role}
     except InvalidTokenError:
         raise HTTPException(status_code=401, detail="Could not validate credentials")
 
@@ -79,14 +80,22 @@ app = FastAPI(title="FastCart Order API", description="Manages customer orders",
 async def health_check():
     return {"status": "Order Service is healthy"}
 
-    
+@app.get("/orders", response_model=list[OrderResponse])
+async def list_orders(user_data: dict = Depends(get_current_user_token), db: AsyncSession = Depends(get_db)):
+    if user_data["role"] == "admin":
+        result = await db.execute(select(Order))
+    else:
+        result = await db.execute(select(Order).where(Order.user_id == user_data["user_id"]))
+        
+    return result.scalars().all()
 
 @app.post("/orders", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
 async def create_order(
     order: OrderCreate, 
-    user_id: str = Depends(get_current_user_id), 
+    user_data: dict = Depends(get_current_user_token), 
     db: AsyncSession = Depends(get_db)
 ):
+    user_id = user_data["user_id"]
     product_url = f"http://fastcart-product:8002/products/{order.product_id}"
     async with httpx.AsyncClient() as client:
         try:
@@ -123,7 +132,7 @@ async def create_order(
             order_id=new_order.id,
             user_id=uuid.UUID(user_id),
             items=[EventOrderItem(product_id=uuid.UUID(order.product_id), quantity=order.quantity)],
-            total_amount=calculated_total  # FIX: We now pass the real total!
+            total_amount=calculated_total  
         )
         
         await channel.default_exchange.publish(

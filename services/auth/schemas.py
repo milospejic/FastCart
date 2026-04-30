@@ -5,6 +5,7 @@ from uuid import UUID
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
+    role: str = "customer"
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -13,6 +14,6 @@ class TokenResponse(BaseModel):
 class UserResponse(BaseModel):
     id: UUID
     email: EmailStr
-
+    role: str
     class Config:
         from_attributes = True

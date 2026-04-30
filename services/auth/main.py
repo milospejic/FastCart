@@ -86,7 +86,7 @@ async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
 
     hashed_pwd = get_password_hash(user.password)
 
-    new_user = User(email=user.email, hashed_password=hashed_pwd)
+    new_user = User(email=user.email, hashed_password=hashed_pwd, role=user.role)
 
     db.add(new_user)
     await db.commit()
