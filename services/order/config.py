@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     order_database_url: str
     secret_key: str 
     algorithm: str = "HS256"
+    rabbitmq_url: str
 
     model_config = SettingsConfigDict(env_file=ENV_PATH, extra="ignore")
 

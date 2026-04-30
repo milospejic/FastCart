@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 class EventOrderItem(BaseModel):
     product_id: uuid.UUID
     quantity: int
-
+    
 class OrderCreatedEvent(BaseModel):
     event_id: uuid.UUID = Field(default_factory=uuid.uuid4)
     order_id: uuid.UUID
@@ -15,10 +15,15 @@ class OrderCreatedEvent(BaseModel):
     total_amount: float
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-class InventoryReservedEvent(BaseModel):
+class StockReservedEvent(BaseModel):
     event_id: uuid.UUID = Field(default_factory=uuid.uuid4)
     order_id: uuid.UUID
-    status: str 
+    status: str
+
+class StockFailedEvent(BaseModel):
+    event_id: uuid.UUID = Field(default_factory=uuid.uuid4)
+    order_id: uuid.UUID
+    reason: str
 
 class PaymentProcessedEvent(BaseModel):
     event_id: uuid.UUID = Field(default_factory=uuid.uuid4)

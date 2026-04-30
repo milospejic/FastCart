@@ -9,5 +9,6 @@ class Product(Base):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(255), index=True)
     description: Mapped[str] = mapped_column(Text, nullable=True)
-    price: Mapped[float] = mapped_column(Float)
-    stock: Mapped[int] = mapped_column(Integer, default=0)
+    price: Mapped[float] = mapped_column(Float)    
+    available_quantity: Mapped[int] = mapped_column(Integer, default=0)
+    reserved_quantity: Mapped[int] = mapped_column(Integer, default=0)

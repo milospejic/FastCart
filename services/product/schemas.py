@@ -6,17 +6,15 @@ class ProductCreate(BaseModel):
     name: str
     description: Optional[str] = None
     price: float
-    stock: int
+    available_quantity: int = 0
 
 class ProductResponse(BaseModel):
     id: UUID
     name: str
     description: Optional[str] = None
     price: float
-    stock: int
+    available_quantity: int
+    reserved_quantity: int
 
     class Config:
         from_attributes = True
-
-class ProductUpdateStock(BaseModel):
-    quantity: int

@@ -10,7 +10,7 @@ GATEWAY_CONFIG = {
     "endpoints": {
         "/auth":     {"backend": "http://fastcart-auth:8001"},
         "/products": {"backend": "http://fastcart-product:8002"},
-        "/orders":   {"backend": "http://fastcart-order:8003"},
+        "/orders":   {"backend": "http://fastcart-order:8003"}
     }
 }
 
