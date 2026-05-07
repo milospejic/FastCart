@@ -11,7 +11,8 @@ GATEWAY_CONFIG = {
         "/auth":     {"backend": "http://fastcart-auth:8001"},
         "/products": {"backend": "http://fastcart-product:8002"},
         "/orders":   {"backend": "http://fastcart-order:8003"},
-        "/payment":  {"backend": "http://fastcart-payment:8005"}
+        "/payments":  {"backend": "http://fastcart-payment:8005"},
+        "/reviews":  {"backend": "http://fastcart-review:8006"}
     }
 }
 
@@ -40,7 +41,8 @@ async def gateway_swagger_ui(request: Request):
         {"name": "Products API", "url": f"{base_url}/openapi/products.json"},
         {"name": "Orders API",   "url": f"{base_url}/openapi/orders.json"},
         {"name": "Auth API",     "url": f"{base_url}/openapi/auth.json"},
-        {"name": "Payment API",  "url": f"{base_url}/openapi/payments.json"}
+        {"name": "Payment API",  "url": f"{base_url}/openapi/payments.json"},
+        {"name": "Reviews API",  "url": f"{base_url}/openapi/reviews.json"}
     ]
     urls_json = json.dumps(urls)
 

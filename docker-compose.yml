@@ -54,6 +54,19 @@ services:
       - "5436:5432"
     volumes:
       - postgres_payment_data:/var/lib/postgresql/data
+
+  postgres-review:
+    image: postgres:15
+    container_name: fastcart-db-review
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: fastcart_review
+    ports:
+      - "5437:5432"
+    volumes:
+      - postgres_review_data:/var/lib/postgresql/data
+
   auth-service:
     build:
       context: ./services/auth
@@ -121,8 +134,22 @@ services:
     env_file:
       - .env
 
+  fastcart-review:
+    build:
+      context: ./services/review
+      additional_contexts:
+        shared_ctx: ./shared
+    container_name: fastcart-review
+    ports:
+      - "8006:8006"
+    depends_on:
+      - postgres-review
+    env_file:
+      - .env
+
 volumes:
   postgres_auth_data:
   postgres_product_data:
   postgres_order_data:
   postgres_payment_data:
+  postgres_review_data:
