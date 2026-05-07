@@ -3,8 +3,20 @@ import os
 import httpx
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
-
+from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI(title="FastCart API Gateway", docs_url=None, openapi_url=None)
+
+
+cors_origins_str = os.environ.get("FRONTEND_CORS_ORIGINS")
+allowed_origins = [origin.strip() for origin in cors_origins_str.split(",")]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 GATEWAY_CONFIG = {
     "endpoints": {
