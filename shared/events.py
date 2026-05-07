@@ -18,6 +18,8 @@ class OrderCreatedEvent(BaseModel):
 class StockReservedEvent(BaseModel):
     event_id: uuid.UUID = Field(default_factory=uuid.uuid4)
     order_id: uuid.UUID
+    user_id: uuid.UUID     
+    total_amount: float
     status: str
 
 class StockFailedEvent(BaseModel):
@@ -30,3 +32,8 @@ class PaymentProcessedEvent(BaseModel):
     order_id: uuid.UUID
     status: str 
     transaction_id: str | None = None
+
+class OrderCompletedEvent(BaseModel):
+    event_id: uuid.UUID = Field(default_factory=uuid.uuid4)
+    order_id: uuid.UUID
+    items: List[EventOrderItem]

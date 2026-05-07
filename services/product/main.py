@@ -12,7 +12,7 @@ from schemas import ProductCreate, ProductResponse
 from models import Product
 from database import get_db, engine, Base, AsyncSessionLocal
 from config import settings
-from shared.events import OrderCreatedEvent, StockReservedEvent, StockFailedEvent
+from shared.events import OrderCreatedEvent, StockReservedEvent, StockFailedEvent, OrderCompletedEvent
 
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
@@ -66,6 +66,8 @@ async def process_order_created(message: aio_pika.abc.AbstractIncomingMessage):
             
         success_event = StockReservedEvent(
             order_id=event.order_id,
+            user_id=event.user_id,          
+            total_amount=event.total_amount,
             status="RESERVED"
         )
         connection = await aio_pika.connect_robust(settings.rabbitmq_url)
@@ -75,6 +77,44 @@ async def process_order_created(message: aio_pika.abc.AbstractIncomingMessage):
                 aio_pika.Message(body=success_event.model_dump_json().encode()),
                 routing_key="stock.reserved" 
             )
+
+async def process_stock_failed(message: aio_pika.abc.AbstractIncomingMessage):
+    async with message.process():
+        event_data = json.loads(message.body.decode())
+        event = StockFailedEvent(**event_data)
+        
+        print(f"❌ PRODUCT SERVICE: Received stock failure for {event.order_id}. Releasing reserved stock...")
+        
+        async with AsyncSessionLocal() as db:
+            item_request = event.items[0] 
+            product_id_str = str(item_request.product_id)
+            
+            result = await db.execute(select(Product).where(Product.id == product_id_str))
+            product = result.scalars().first()
+            
+            if product:
+                product.available_quantity += item_request.quantity
+                product.reserved_quantity -= item_request.quantity
+                await db.commit()
+                print(f"🔓 PRODUCT SERVICE: Released reserved stock for {event.order_id}.")
+async def process_order_completed(message: aio_pika.abc.AbstractIncomingMessage):
+    async with message.process():
+        event_data = json.loads(message.body.decode())
+        event = OrderCompletedEvent(**event_data)
+        
+        print(f"✅ PRODUCT SERVICE: Received order completion for {event.order_id}. Finalizing stock...")
+        
+        async with AsyncSessionLocal() as db:
+            item_request = event.items[0] 
+            product_id_str = str(item_request.product_id)
+            
+            result = await db.execute(select(Product).where(Product.id == product_id_str))
+            product = result.scalars().first()
+            
+            if product:
+                product.reserved_quantity -= item_request.quantity
+                await db.commit()
+                print(f"✅ PRODUCT SERVICE: Finalized stock for {event.order_id}.")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -96,6 +136,10 @@ async def lifespan(app: FastAPI):
     channel = await connection.channel()
     queue = await channel.declare_queue("order.created", durable=True)
     await queue.consume(process_order_created)
+
+    cleanup_queue = await channel.declare_queue("order.completed", durable=True)
+    await cleanup_queue.consume(process_order_completed)
+
     print("🎧 Product Service is listening for events...")
     
     yield

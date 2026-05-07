@@ -6,5 +6,5 @@ __pycache__/
 # Secrets
 .env
 
-
+test-api.py
 run-on-laptop.sh

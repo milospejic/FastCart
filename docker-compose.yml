@@ -43,6 +43,17 @@ services:
     volumes:
       - postgres_order_data:/var/lib/postgresql/data
 
+  postgres-payment:
+    image: postgres:15
+    container_name: fastcart-db-payment
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: fastcart_payment
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres_payment_data:/var/lib/postgresql/data
   auth-service:
     build:
       context: ./services/auth
@@ -53,6 +64,7 @@ services:
     env_file: .env
     depends_on:
       - postgres-auth
+      
 
   product-service:
     build:
@@ -66,6 +78,7 @@ services:
     env_file: .env
     depends_on:
       - postgres-product
+      - rabbitmq
 
 
   order-service:
@@ -94,7 +107,22 @@ services:
       - product-service
       - order-service
 
+  fastcart-payment:
+    build:
+      context: ./services/payment
+      additional_contexts:
+        shared_ctx: ./shared
+    container_name: fastcart-payment
+    ports:
+      - "8005:8005"
+    depends_on:
+      - postgres-payment
+      - rabbitmq
+    env_file:
+      - .env
+
 volumes:
   postgres_auth_data:
   postgres_product_data:
   postgres_order_data:
+  postgres_payment_data:

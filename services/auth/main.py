@@ -102,7 +102,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSessi
     if not db_user or not verify_password(form_data.password, db_user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
-    access_token = create_access_token(data={"sub": str(db_user.id)})
+    access_token = create_access_token(data={"sub": str(db_user.id), "role": db_user.role})
     
     return TokenResponse(access_token=access_token, token_type="bearer")
 

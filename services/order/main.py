@@ -17,7 +17,7 @@ import uuid
 import json
 import asyncio
 from database import AsyncSessionLocal
-from shared.events import OrderCreatedEvent, EventOrderItem, StockFailedEvent
+from shared.events import OrderCreatedEvent, EventOrderItem, StockFailedEvent, PaymentProcessedEvent, OrderCompletedEvent
 
 security = HTTPBearer()
 
@@ -47,6 +47,34 @@ async def process_stock_failed(message: aio_pika.abc.AbstractIncomingMessage):
                 await db.commit()
                 print(f"🚫 ORDER SERVICE: Order {event.order_id} has been cancelled!")
 
+async def process_payment_processed(message: aio_pika.abc.AbstractIncomingMessage):
+    async with message.process():
+        event_data = json.loads(message.body.decode())
+        event = PaymentProcessedEvent(**event_data)
+        
+        print(f"✅ ORDER SERVICE: Payment received for {event.order_id}! Fulfilling order...")
+        
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(select(Order).where(Order.id == event.order_id))
+            order = result.scalars().first()
+            
+            if order:
+                order.status = "completed"
+                await db.commit()
+                
+                connection = await aio_pika.connect_robust(settings.rabbitmq_url)
+                async with connection:
+                    channel = await connection.channel()
+                    completed_event = OrderCompletedEvent(
+                        order_id=order.id,
+                        items=[EventOrderItem(product_id=uuid.UUID(order.product_id), quantity=order.quantity)]
+                    )
+                    await channel.default_exchange.publish(
+                        aio_pika.Message(body=completed_event.model_dump_json().encode()),
+                        routing_key="order.completed"
+                    )
+                print(f"📦 ORDER SERVICE: Order {event.order_id} is complete. 'order.completed' event sent!")
+        
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
@@ -67,6 +95,9 @@ async def lifespan(app: FastAPI):
     channel = await connection.channel()
     queue = await channel.declare_queue("stock.failed", durable=True)
     await queue.consume(process_stock_failed)
+
+    payment_queue = await channel.declare_queue("payment.processed", durable=True)
+    await payment_queue.consume(process_payment_processed)
     print("🎧 Order Service is listening for events...")
     
     yield
