@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:  
+  - components/deployments/auth-deployment.yml
+  - components/deployments/product-deployment.yml
+  - components/deployments/order-deployment.yml
+  - components/deployments/payment-deployment.yml
+  - components/deployments/review-deployment.yml
+  
+  - components/services/auth-service.yml
+  - components/services/product-service.yml
+  - components/services/order-service.yml
+  - components/services/payment-service.yml
+  - components/services/review-service.yml
+  
+  - infrastructure/rabbitmq.yml
+  - components/ingress.yml
+
+secretGenerator:
+  - name: fastcart-secrets
+    envs:
+      - secrets.env
+labels:
+  - pairs:
+      project: fastcart

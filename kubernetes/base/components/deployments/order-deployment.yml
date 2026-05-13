@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fastcart-order
+  labels:
+    app: order
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: order
+  template:
+    metadata:
+      labels:
+        app: order
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+      - name: order
+        image: fastcart-order:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8003
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+
+        readinessProbe:
+          httpGet:
+            path: /orders/health
+            port: 8003
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /orders/health
+            port: 8003
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        env:
+        - name: DB_USER
+          value: "fastcart_admin"
+        - name: DB_HOST
+          value: "fastcart-db-service"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: fastcart-secrets
+              key: POSTGRES_PASSWORD 
+        - name: order_DATABASE_URL
+          value: "postgresql+asyncpg://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):5432/fastcart_order"
+        - name: RABBIT_USER
+          value: "admin"
+        - name: RABBIT_HOST
+          value: "fastcart-rabbitmq-service"
+        - name: RABBIT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: fastcart-secrets
+              key: RABBITMQ_PASSWORD
+        - name: RABBITMQ_URL
+          value: "amqp://$(RABBIT_USER):$(RABBIT_PASSWORD)@$(RABBIT_HOST):5672/"
+        - name: ALGORITHM
+          value: "HS256"
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: fastcart-secrets
+              key: JWT_SECRET_KEY
