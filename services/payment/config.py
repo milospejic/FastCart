@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     rabbitmq_url: str 
     stripe_secret_key: str
     stripe_webhook_secret: str
-
+    frontend_url: str
     model_config = SettingsConfigDict(env_file=ENV_PATH, extra="ignore")
 
 settings = Settings()

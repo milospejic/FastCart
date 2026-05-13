@@ -90,8 +90,8 @@ async def create_checkout_session(order_id: str, db: AsyncSession = Depends(get_
                 }
             ],
             mode='payment',
-            success_url='http://localhost:8000/docs', 
-            cancel_url='http://localhost:8000/docs',
+            success_url=f'{settings.frontend_url}/docs', 
+            cancel_url=f'{settings.frontend_url}/docs',
             metadata={'order_id': order_id} 
         )
         
