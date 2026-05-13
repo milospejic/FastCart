@@ -1,0 +1,91 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Images
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [auth, product, order, payment, review]
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker Image
+        run: |
+          echo "Building fastcart-${{ matrix.service }}..."
+          docker build \
+            -t fastcart-${{ matrix.service }}:${{ github.sha }} \
+            --build-context shared_ctx=./shared \
+            ./services/${{ matrix.service }}
+
+      - name: Save Docker Image to Tarball
+        run: |
+          docker save fastcart-${{ matrix.service }}:${{ github.sha }} > fastcart-${{ matrix.service }}.tar
+
+      - name: Upload Image Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-${{ matrix.service }}
+          path: fastcart-${{ matrix.service }}.tar
+          retention-days: 1 
+
+
+  push:
+    name: Push to Artifact Registry
+    needs: build
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+      
+    strategy:
+      matrix:
+        service: [auth, product, order, payment, review]
+        
+    steps:
+      - name: Download Image Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: image-${{ matrix.service }}
+
+      - name: Load Docker Image
+        run: |
+          docker load < fastcart-${{ matrix.service }}.tar
+
+      - name: Authenticate to Google Cloud via WIF
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: '${{ secrets.WIF_PROVIDER }}'
+          service_account: '${{ secrets.GCP_SA_EMAIL }}'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Tag and Push Docker Image
+        run: |
+          IMAGE_URL=${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.REPO_NAME }}/fastcart-${{ matrix.service }}
+          
+          echo "Tagging and pushing to $IMAGE_URL..."
+          
+          docker tag fastcart-${{ matrix.service }}:${{ github.sha }} $IMAGE_URL:${{ github.sha }}
+          docker tag fastcart-${{ matrix.service }}:${{ github.sha }} $IMAGE_URL:latest
+          
+          docker push $IMAGE_URL:${{ github.sha }}
+          docker push $IMAGE_URL:latest
