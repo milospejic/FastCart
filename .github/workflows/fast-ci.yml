@@ -89,3 +89,44 @@ jobs:
           
           docker push $IMAGE_URL:${{ github.sha }}
           docker push $IMAGE_URL:latest
+  update-gitops:
+    name: Update ArgoCD Manifests
+    needs: push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout GitOps Repository
+        uses: actions/checkout@v4
+        with:
+          repository: 'milospejic/fastcart-k8s'
+          token: ${{ secrets.GITOPS_PAT }}
+          path: gitops-repo
+
+      - name: Setup Kustomize
+        uses: imranismail/setup-kustomize@v2
+        
+      - name: Update Image Tags with new SHA
+        working-directory: gitops-repo/overlays/prod
+        run: |
+          BASE_URL="${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.REPO_NAME }}"
+          
+          kustomize edit set image fastcart-auth=$BASE_URL/fastcart-auth:${{ github.sha }}
+          kustomize edit set image fastcart-product=$BASE_URL/fastcart-product:${{ github.sha }}
+          kustomize edit set image fastcart-order=$BASE_URL/fastcart-order:${{ github.sha }}
+          kustomize edit set image fastcart-payment=$BASE_URL/fastcart-payment:${{ github.sha }}
+          kustomize edit set image fastcart-review=$BASE_URL/fastcart-review:${{ github.sha }}
+          
+      - name: Commit and Push to GitOps Repo
+        working-directory: gitops-repo
+        run: |
+          git config user.name "GitHub Actions CI"
+          git config user.email "actions@github.com"
+          
+          if git diff --quiet; then
+            echo "No changes to commit."
+          else
+            git add overlays/prod/kustomization.yml
+            git commit -m "chore: deploy new image tags [SHA: ${{ github.sha }}]"
+            git push
+          fi
