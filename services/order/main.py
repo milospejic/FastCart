@@ -1,5 +1,6 @@
 from fastapi import FastAPI, status, Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from contextlib import asynccontextmanager
@@ -105,6 +106,14 @@ async def lifespan(app: FastAPI):
         await connection.close()
 
 app = FastAPI(title="FastCart Order API", description="Manages customer orders", lifespan=lifespan)
+allowed_origins = [origin.strip() for origin in settings.frontend_cors_origins.split(",")]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/orders/health")

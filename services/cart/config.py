@@ -6,12 +6,12 @@ ROOT_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
 ENV_PATH = os.path.join(ROOT_DIR, ".env")
 
 class Settings(BaseSettings):
-    product_database_url: str
-    rabbitmq_url: str 
-    secret_key: str            
-    algorithm: str = "HS256"   
-    frontend_cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
-    
+    redis_host: str = "fastcart-redis-service" 
+    redis_port: int = 6379
+    redis_password: str | None = None
+    secret_key: str
+    algorithm: str = "HS256"
+
     model_config = SettingsConfigDict(env_file=ENV_PATH, extra="ignore")
 
 settings = Settings()

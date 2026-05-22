@@ -65,10 +65,11 @@ app = FastAPI(
     description="Handles user registration and login",
     lifespan=lifespan
 )
-
+allowed_origins = [origin.strip() for origin in settings.frontend_cors_origins.split(",")]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

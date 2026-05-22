@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [auth, product, order, payment, review]
+        service: [auth, product, order, payment, review, cart]
     
     steps:
       - name: Checkout Repository
@@ -53,7 +53,7 @@ jobs:
       
     strategy:
       matrix:
-        service: [auth, product, order, payment, review]
+        service: [auth, product, order, payment, review, cart]
         
     steps:
       - name: Download Image Artifact

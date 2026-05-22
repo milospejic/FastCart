@@ -1,4 +1,6 @@
 from fastapi import FastAPI, status, Depends, HTTPException, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncSession
 from contextlib import asynccontextmanager
 import aio_pika
@@ -62,6 +64,14 @@ async def lifespan(app: FastAPI):
         await connection.close()
 
 app = FastAPI(title="FastCart Payment API", lifespan=lifespan)
+allowed_origins = [origin.strip() for origin in settings.frontend_cors_origins.split(",")]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.post("/payments/{order_id}/checkout", response_model=CheckoutUrlResponse)
 async def create_checkout_session(order_id: str, db: AsyncSession = Depends(get_db)):

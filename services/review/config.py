@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     review_database_url: str
     secret_key: str 
     algorithm: str = "HS256"
+    frontend_cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     model_config = SettingsConfigDict(env_file=ENV_PATH, extra="ignore")
 
