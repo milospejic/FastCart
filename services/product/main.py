@@ -133,13 +133,23 @@ async def lifespan(app: FastAPI):
             await asyncio.sleep(5) 
             
     if not connection:
-        raise RuntimeError("RabbitMQ never woke up! Please check your docker containers.")
+        raise RuntimeError("RabbitMQ never woke up!")
             
     channel = await connection.channel()
-    queue = await channel.declare_queue("order.created", durable=True)
+
+    dlx_exchange = await channel.declare_exchange("dlx", aio_pika.ExchangeType.DIRECT, durable=True)
+    dlq = await channel.declare_queue("dead_letter_queue", durable=True)
+    await dlq.bind(dlx_exchange, routing_key="poison_message")
+
+    queue_args = {
+        "x-dead-letter-exchange": "dlx",
+        "x-dead-letter-routing-key": "poison_message"
+    }
+
+    queue = await channel.declare_queue("order.created", durable=True, arguments=queue_args)
     await queue.consume(process_order_created)
 
-    cleanup_queue = await channel.declare_queue("order.completed", durable=True)
+    cleanup_queue = await channel.declare_queue("order.completed", durable=True, arguments=queue_args)
     await cleanup_queue.consume(process_order_completed)
 
     print("🎧 Product Service is listening for events...")
