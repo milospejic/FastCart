@@ -7,4 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+COPY --from=shared_ctx . /app/shared
+
+
 CMD [ "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8004" ]

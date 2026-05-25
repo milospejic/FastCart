@@ -6,7 +6,7 @@ from jwt.exceptions import InvalidTokenError
 import redis.asyncio as aioredis
 import json
 from contextlib import asynccontextmanager
-
+from shared.tracing import setup_tracing
 from config import settings
 from schemas import CartUpdate, CartResponse
 
@@ -37,7 +37,7 @@ async def lifespan(app: FastAPI):
         await redis_client.close()
 
 app = FastAPI(title="FastCart Cart API", description="Service for managing shopping carts", lifespan=lifespan)
-
+setup_tracing(app, "cart-service")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 

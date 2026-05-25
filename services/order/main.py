@@ -12,13 +12,14 @@ from schemas import OrderCreate, OrderResponse
 from models import Order
 from database import get_db, engine, Base
 from config import settings
-
+from sqlalchemy.exc import DBAPIError
 import aio_pika
 import uuid
 import json
 import asyncio
 from database import AsyncSessionLocal
 from shared.events import OrderCreatedEvent, EventOrderItem, StockFailedEvent, PaymentProcessedEvent, OrderCompletedEvent
+from shared.tracing import setup_tracing
 
 security = HTTPBearer()
 
@@ -78,8 +79,16 @@ async def process_payment_processed(message: aio_pika.abc.AbstractIncomingMessag
         
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    for i in range(10):
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            break 
+        except Exception as e:
+            print(f"⏳ Waiting for Database to wake up... (Attempt {i+1}/10)")
+            await asyncio.sleep(3)
+    else:
+        raise RuntimeError("Database never woke up!")
         
     connection = None
     for i in range(10):
@@ -106,6 +115,7 @@ async def lifespan(app: FastAPI):
         await connection.close()
 
 app = FastAPI(title="FastCart Order API", description="Manages customer orders", lifespan=lifespan)
+setup_tracing(app, "order-service")
 allowed_origins = [origin.strip() for origin in settings.frontend_cors_origins.split(",")]
 app.add_middleware(
     CORSMiddleware,

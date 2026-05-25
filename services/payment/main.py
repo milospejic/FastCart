@@ -6,16 +6,17 @@ from contextlib import asynccontextmanager
 import aio_pika
 import json
 import asyncio
+from sqlalchemy.exc import DBAPIError
 import stripe
 from sqlalchemy.future import select
 from schemas import PaymentResponse, CheckoutUrlResponse
 
 from database import engine, Base, AsyncSessionLocal, get_db
 from models import Payment
-from schemas import PaymentResponse
 from config import settings
 import uuid
 from shared.events import StockReservedEvent, PaymentProcessedEvent
+from shared.tracing import setup_tracing
 
 stripe.api_key = settings.stripe_secret_key
 
@@ -39,8 +40,16 @@ async def process_stock_reserved(message: aio_pika.abc.AbstractIncomingMessage):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    for i in range(10):
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            break
+        except Exception as e:
+            print(f"⏳ Waiting for Database to wake up... (Attempt {i+1}/10)")
+            await asyncio.sleep(3)
+    else:
+        raise RuntimeError("Database never woke up!")
         
     connection = None
     for i in range(10):
@@ -64,6 +73,7 @@ async def lifespan(app: FastAPI):
         await connection.close()
 
 app = FastAPI(title="FastCart Payment API", lifespan=lifespan)
+setup_tracing(app, "payment-service")
 allowed_origins = [origin.strip() for origin in settings.frontend_cors_origins.split(",")]
 app.add_middleware(
     CORSMiddleware,

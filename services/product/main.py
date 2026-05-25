@@ -9,13 +9,13 @@ from typing import List
 import aio_pika
 import json
 import asyncio
-
+from sqlalchemy.exc import DBAPIError 
 from schemas import ProductCreate, ProductResponse
 from models import Product
 from database import get_db, engine, Base, AsyncSessionLocal
 from config import settings
 from shared.events import OrderCreatedEvent, StockReservedEvent, StockFailedEvent, OrderCompletedEvent
-
+from shared.tracing import setup_tracing
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import jwt
 from jwt.exceptions import InvalidTokenError
@@ -120,8 +120,16 @@ async def process_order_completed(message: aio_pika.abc.AbstractIncomingMessage)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    for i in range(10):
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            break 
+        except Exception as e:
+            print(f"⏳ Waiting for Database to wake up... (Attempt {i+1}/10)")
+            await asyncio.sleep(3)
+    else:
+        raise RuntimeError("Database never woke up!")
         
     connection = None
     for i in range(10):
@@ -159,6 +167,7 @@ async def lifespan(app: FastAPI):
         await connection.close()
 
 app = FastAPI(title="FastCart Product API", lifespan=lifespan)
+setup_tracing(app, "product-service")
 allowed_origins = [origin.strip() for origin in settings.frontend_cors_origins.split(",")]
 app.add_middleware(
     CORSMiddleware,

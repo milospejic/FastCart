@@ -1,6 +1,7 @@
 from fastapi import FastAPI, status, Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.ext import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError
@@ -8,13 +9,16 @@ from contextlib import asynccontextmanager
 import jwt
 from jwt.exceptions import InvalidTokenError
 import uuid
-
+import asyncio
 from schemas import ReviewCreate, ReviewResponse, ProductReviewsResponse
+from shared.tracing import setup_tracing
 from models import Review
 from database import get_db, engine, Base
 from config import settings
 
 security = HTTPBearer()
+
+
 
 async def get_current_user_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
@@ -30,11 +34,20 @@ async def get_current_user_token(credentials: HTTPAuthorizationCredentials = Dep
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    for i in range(10):
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            break 
+        except Exception as e:
+            print(f"⏳ Waiting for Database to wake up... (Attempt {i+1}/10)")
+            await asyncio.sleep(3)
+    else:
+        raise RuntimeError("Database never woke up!")
     yield
 
 app = FastAPI(title="FastCart Review API", lifespan=lifespan)
+setup_tracing(app, "review-service")
 
 allowed_origins = [origin.strip() for origin in settings.frontend_cors_origins.split(",")]
 
