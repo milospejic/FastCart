@@ -116,7 +116,8 @@ jobs:
           kustomize edit set image fastcart-order=$BASE_URL/fastcart-order:${{ github.sha }}
           kustomize edit set image fastcart-payment=$BASE_URL/fastcart-payment:${{ github.sha }}
           kustomize edit set image fastcart-review=$BASE_URL/fastcart-review:${{ github.sha }}
-          
+          kustomize edit set image fastcart-cart=$BASE_URL/fastcart-cart:${{ github.sha }}
+      
       - name: Commit and Push to GitOps Repo
         working-directory: gitops-repo
         run: |
